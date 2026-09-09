@@ -1,0 +1,15 @@
+# .NET
+bin/
+obj/
+dist/
+*.user
+*.suo
+.vs/
+.idea/
+*.swp
+TestResults/
+# OS
+.DS_Store
+Thumbs.db
+# local config with your device names
+relay.json

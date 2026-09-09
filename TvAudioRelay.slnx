@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TvAudioRelay.Core/TvAudioRelay.Core.csproj" />
+    <Project Path="src/TvAudioRelay/TvAudioRelay.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TvAudioRelay.Core.Tests/TvAudioRelay.Core.Tests.csproj" />
+  </Folder>
+</Solution>

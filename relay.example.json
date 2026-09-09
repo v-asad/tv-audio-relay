@@ -1,0 +1,28 @@
+{
+  // Part of the TV's Bluetooth name as Windows shows it (tv-audio-relay devices).
+  "tv": "TCL",
+
+  // Device Windows plays the TV's audio on. null = the Windows default playback device.
+  "source": null,
+
+  // Devices to copy the audio to. Use the "Headphones (... Stereo)" names, not "Headset".
+  "outputs": [
+    "Headphones (WH-1000XM5 Stereo)",
+    "Headphones (Galaxy Buds Stereo)"
+  ],
+
+  // Audio held per output in milliseconds. Lower = less delay, higher = fewer dropouts.
+  "bufferMs": 80,
+
+  // WASAPI period per output in milliseconds.
+  "latencyMs": 40,
+
+  // Act as the TV's Bluetooth receiver. Set false to relay any other audio playing on the source.
+  "receive": true,
+
+  // Play silence to the source device so Windows keeps its loopback stream alive.
+  "keepAlive": true,
+
+  // Seconds between status lines.
+  "statusSeconds": 5
+}
