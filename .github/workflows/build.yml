@@ -35,7 +35,7 @@ jobs:
       - name: Publish single-file exe (win-x64)
         run: >
           dotnet publish src/TvAudioRelay -c Release -r win-x64 --self-contained
-          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
           -o dist/win-x64
 
       - name: Smoke test (help text runs on a real Windows box)

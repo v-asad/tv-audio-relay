@@ -17,6 +17,7 @@ dotnet publish (Join-Path $root "src\TvAudioRelay") `
     -c Release -r $Rid --self-contained `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=true `
     -o $out
 
 Write-Host ""
