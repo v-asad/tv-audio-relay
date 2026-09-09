@@ -198,4 +198,21 @@ public class DriftCompensatingProviderTests
         Assert.Equal(1, p.HardDrops);
         Assert.InRange(p.BufferedMs, 0, target.TotalMilliseconds + 20);
     }
+
+    [Fact]
+    public void AcceptsWasapiStyleExtensibleFloatInput()
+    {
+        // WASAPI loopback reports WAVEFORMATEXTENSIBLE with the IEEE float sub-format.
+        var extensible = new WaveFormatExtensible(48000, 32, 2);
+        Assert.True(FloatFormat.Is32BitFloat(extensible));
+        Assert.False(FloatFormat.Is32BitFloat(new WaveFormat(48000, 16, 2)));
+
+        var input = new BufferedWaveProvider(extensible) { BufferDuration = TimeSpan.FromSeconds(2) };
+        var p = new DriftCompensatingProvider(input, WaveFormat.CreateIeeeFloatWaveFormat(48000, 2), TimeSpan.FromMilliseconds(20));
+
+        Feed(input, Enumerable.Repeat(0.4f, 2 * 960).ToArray());
+        var got = Read(p, 480);
+        Assert.False(p.IsPriming);
+        Assert.All(got, s => Assert.Equal(0.4f, s, 5));
+    }
 }

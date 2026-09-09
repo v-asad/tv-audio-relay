@@ -71,10 +71,10 @@ public sealed class DriftCompensatingProvider : IWaveProvider
         _inFormat = input.WaveFormat;
         _outFormat = outputFormat ?? throw new ArgumentNullException(nameof(outputFormat));
 
-        if (_inFormat.Encoding != WaveFormatEncoding.IeeeFloat || _inFormat.BitsPerSample != 32)
-            throw new ArgumentException("Input must be 32-bit IEEE float PCM.", nameof(input));
-        if (_outFormat.Encoding != WaveFormatEncoding.IeeeFloat || _outFormat.BitsPerSample != 32)
-            throw new ArgumentException("Output must be 32-bit IEEE float PCM.", nameof(outputFormat));
+        if (!FloatFormat.Is32BitFloat(_inFormat))
+            throw new ArgumentException($"Input must be 32-bit float PCM, got {_inFormat}.", nameof(input));
+        if (!FloatFormat.Is32BitFloat(_outFormat))
+            throw new ArgumentException($"Output must be 32-bit float PCM, got {_outFormat}.", nameof(outputFormat));
         if (target <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(target));
 
         _input.ReadFully = false;

@@ -39,83 +39,95 @@ public static class Relay
 
         var sinks = new List<OutputSink>();
         var sinkLock = new object();
-        foreach (var o in outputs)
-            sinks.Add(CreateSink(o, loopback, settings));
-
-        loopback.DataAvailable += (buf, n) =>
+        try
         {
-            lock (sinkLock)
+            foreach (var o in outputs)
+                sinks.Add(CreateSink(o, loopback, settings));
+
+            loopback.DataAvailable += (buf, n) =>
             {
-                foreach (var s in sinks) s.Push(buf, n);
-            }
-        };
-        loopback.Stopped += ex => Console.WriteLine($"Capture stopped{(ex is null ? "" : ": " + ex.Message)}.");
-
-        lock (sinkLock) foreach (var s in sinks) s.Start();
-        loopback.Start();
-
-        // 3. Bluetooth receiver.
-        PlaybackReceiver? receiver = null;
-        Task receiverTask = Task.CompletedTask;
-        if (settings.Receive)
-        {
-            var (id, name) = await PickTvAsync(settings.Tv);
-            receiver = new PlaybackReceiver(id, name);
-            receiver.Log += msg => Console.WriteLine($"[bt] {msg}");
-            receiverTask = receiver.RunAsync(ct);
-        }
-        else
-        {
-            Console.WriteLine("Receiver off (--no-receive): relaying whatever plays on the source device.");
-        }
-
-        Console.WriteLine("Running. Press Ctrl+C to stop.");
-        Console.WriteLine();
-
-        // 4. Status and self-healing loop.
-        var stopwatch = Stopwatch.StartNew();
-        while (!ct.IsCancellationRequested)
-        {
-            try { await Task.Delay(TimeSpan.FromSeconds(settings.StatusSeconds), ct); }
-            catch (OperationCanceledException) { break; }
-
-            lock (sinkLock)
-            {
-                for (int i = 0; i < sinks.Count; i++)
+                lock (sinkLock)
                 {
-                    if (!sinks[i].IsStopped) continue;
-                    var dev = AudioDevices.ById(sinks[i].DeviceId);
-                    if (dev is null) continue; // still gone; try again next tick
-                    string name = sinks[i].Name;
-                    sinks[i].Dispose();
-                    try
-                    {
-                        sinks[i] = CreateSink(dev, loopback, settings);
-                        sinks[i].Start();
-                        Console.WriteLine($"[out] \"{name}\" is back; playback restarted.");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[out] \"{name}\" restart failed: {ex.Message}");
-                    }
+                    foreach (var s in sinks) s.Push(buf, n);
+                }
+            };
+            loopback.Stopped += ex => Console.WriteLine($"Capture stopped{(ex is null ? "" : ": " + ex.Message)}.");
+
+            lock (sinkLock) foreach (var s in sinks) s.Start();
+            loopback.Start();
+
+            // 3. Bluetooth receiver.
+            PlaybackReceiver? receiver = null;
+            Task receiverTask = Task.CompletedTask;
+            if (settings.Receive)
+            {
+                var (id, name) = await PickTvAsync(settings.Tv);
+                receiver = new PlaybackReceiver(id, name);
+                receiver.Log += msg => Console.WriteLine($"[bt] {msg}");
+                receiverTask = receiver.RunAsync(ct);
+            }
+            else
+            {
+                Console.WriteLine("Receiver off (--no-receive): relaying whatever plays on the source device.");
+            }
+
+            Console.WriteLine("Running. Press Ctrl+C to stop.");
+            Console.WriteLine();
+
+            // 4. Status and self-healing loop.
+            var stopwatch = Stopwatch.StartNew();
+            while (!ct.IsCancellationRequested)
+            {
+                try { await Task.Delay(TimeSpan.FromSeconds(settings.StatusSeconds), ct); }
+                catch (OperationCanceledException) { break; }
+
+                if (receiverTask.IsFaulted)
+                {
+                    Console.WriteLine($"[bt] receiver failed: {receiverTask.Exception?.GetBaseException().Message}");
+                    receiverTask = Task.CompletedTask;
                 }
 
-                float peak = loopback.TakePeak();
-                Console.WriteLine($"{DateTime.Now:HH:mm:ss}  source peak {peak,5:F2}  tv {(receiver is null ? "n/a" : receiver.IsOpen ? "linked" : "not linked")}");
-                foreach (var s in sinks) Console.WriteLine("           " + s.StatusLine());
+                lock (sinkLock)
+                {
+                    for (int i = 0; i < sinks.Count; i++)
+                    {
+                        if (!sinks[i].IsStopped) continue;
+                        var dev = AudioDevices.ById(sinks[i].DeviceId);
+                        if (dev is null) continue; // still gone; try again next tick
+                        string name = sinks[i].Name;
+                        sinks[i].Dispose();
+                        try
+                        {
+                            sinks[i] = CreateSink(dev, loopback, settings);
+                            sinks[i].Start();
+                            Console.WriteLine($"[out] \"{name}\" is back; playback restarted.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[out] \"{name}\" restart failed: {ex.Message}");
+                        }
+                    }
+
+                    float peak = loopback.TakePeak();
+                    Console.WriteLine($"{DateTime.Now:HH:mm:ss}  source peak {peak,5:F2}  tv {(receiver is null ? "n/a" : receiver.IsOpen ? "linked" : "not linked")}");
+                    foreach (var s in sinks) Console.WriteLine("           " + s.StatusLine());
+                }
+
+                if (receiver is { IsOpen: true } && loopback.SinceLastSound > TimeSpan.FromSeconds(20) && stopwatch.Elapsed > TimeSpan.FromSeconds(20))
+                {
+                    Console.WriteLine("           hint: the TV is linked but the source device has been silent for 20 s.");
+                    Console.WriteLine("           If the source is muted in Windows, unmute it and lower its volume instead, or use --source with another device.");
+                }
             }
 
-            if (receiver is { IsOpen: true } && loopback.SinceLastSound > TimeSpan.FromSeconds(20) && stopwatch.Elapsed > TimeSpan.FromSeconds(20))
-            {
-                Console.WriteLine("           hint: the TV is linked but the source device has been silent for 20 s.");
-                Console.WriteLine("           If the source is muted in Windows, unmute it and lower its volume instead, or use --source with another device.");
-            }
+            Console.WriteLine("Stopping...");
+            receiver?.Dispose();
+            try { await receiverTask; } catch (OperationCanceledException) { } catch (Exception) { }
         }
-
-        Console.WriteLine("Stopping...");
-        receiver?.Dispose();
-        try { await receiverTask; } catch (OperationCanceledException) { }
-        lock (sinkLock) foreach (var s in sinks) s.Dispose();
+        finally
+        {
+            lock (sinkLock) foreach (var s in sinks) s.Dispose();
+        }
         return 0;
     }
 
