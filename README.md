@@ -182,6 +182,33 @@ To shave it down:
 | Everything stutters when the second headphone joins | Radio bandwidth. Disconnect other Bluetooth devices (mouse, keyboard) and stay near the laptop. |
 | Headphones switched off, then on, no audio | The relay restarts them within a few seconds. Watch for `is back; playback restarted`. |
 
+## Testing without a Windows machine
+
+The receive and playback stages are Windows-only, so the app itself only runs on Windows. The audio
+engine is not, and it is the part that decides how the relay sounds. Two checks run on macOS or Linux:
+
+```bash
+# install the .NET 10 SDK once (macOS)
+brew install --cask dotnet-sdk
+
+# 1. unit tests for the resampler and drift control
+dotnet test tests/TvAudioRelay.Core.Tests
+
+# 2. simulate a headphone whose clock is 300 ppm off and a 48k -> 44.1k conversion, then listen
+dotnet run --project tools/DriftSim -- --seconds 60 --ppm 300 --out-rate 44100 --output sim.wav
+afplay sim.wav
+```
+
+`driftsim` feeds audio in 10 ms chunks exactly as the Windows capture does, pulls it out at a clock
+that runs fast or slow by `--ppm`, and prints the same buffer, trim, underrun and drop counters the
+app shows. Pass `--in yourfile.wav` to run real music or dialogue through it. A healthy run keeps the
+buffer within about 10 ms of target, converges the trim to the ppm you asked for, and reports zero
+underruns and drops after the initial fill.
+
+For a full end-to-end test you need Windows with its own Bluetooth radio: a Windows laptop, or a
+Windows 11 VM (UTM or Parallels) with a USB Bluetooth adapter passed through to it. The Mac's built-in
+Bluetooth cannot be handed to a VM, and macOS itself cannot act as a Bluetooth audio receiver.
+
 ## Development
 
 ```

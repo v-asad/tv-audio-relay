@@ -19,6 +19,8 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - run: dotnet test tests/TvAudioRelay.Core.Tests -c Release
+      - name: Simulator smoke run (10 s, +300 ppm, 48k to 44.1k)
+        run: dotnet run --project tools/DriftSim -c Release -- --seconds 10 --ppm 300 --out-rate 44100 --output driftsim-ci.wav
 
   windows-app:
     name: Windows app

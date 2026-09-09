@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>DriftSim</RootNamespace>
+    <AssemblyName>driftsim</AssemblyName>
+    <Description>Offline simulator: pushes audio through the relay's resampler with a simulated clock offset and writes a WAV you can listen to. Runs on macOS, Linux and Windows.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TvAudioRelay.Core\TvAudioRelay.Core.csproj" />
+  </ItemGroup>
+
+</Project>
